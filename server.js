@@ -4,6 +4,11 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import testRoutes from './routes/testRoutes.js';
+import submissionRoutes from "./routes/submissionRoutes.js";
+import resultRoutes from "./routes/resultRoutes.js";
+import commentRoutes from "./routes/commentRoutes.js";
+import cheatingRoutes from "./routes/cheatingRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -16,6 +21,11 @@ app.get("/", (_, res) => res.send("API running 🏃‍♀️"));
 
 app.use("/api/auth", authRoutes);
 app.use('/api/tests', testRoutes);
+app.use("/api/submissions", submissionRoutes);
+app.use("/api/results", resultRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/cheating", cheatingRoutes);
+app.use("/api/users", userRoutes);
 
 /* optional example of a protected route */
 import { protect, restrictTo } from "./middlewares/authMiddleware.js";
