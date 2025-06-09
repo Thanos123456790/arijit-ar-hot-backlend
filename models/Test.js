@@ -1,10 +1,5 @@
 import mongoose from 'mongoose';
 
-const AssignedSchema = new mongoose.Schema({
-  branch: String,
-  semester: String,
-});
-
 const QuestionSchema = new mongoose.Schema({
   question: String,
   type: String,
@@ -20,7 +15,7 @@ const TestSchema = new mongoose.Schema({
   evaluationType: { type: String, enum: ["Manual","AI","Automated"] },
   totalScore: Number,
   questions:  [QuestionSchema],
-  assignedTo: [AssignedSchema],
+  assignedTo: { type: [String], default: [] }, 
   studentsAttempted: { type:Number, default:0 },
 }, { timestamps:true });
 

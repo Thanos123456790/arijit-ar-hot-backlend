@@ -21,15 +21,24 @@ export const updateTest = async (req,res)=>{
   res.json(test);
 };
 
-export const assignTest = async (req,res)=>{
-  const { branch, semester } = req.body;
+export const assignTest = async (req, res) => {
+  const { emails } = req.body;
+
+  if (!Array.isArray(emails) || emails.length === 0) {
+    return res.status(400).json({ msg: "No e-mails provided" });
+  }
+
   const test = await Test.findByIdAndUpdate(
     req.params.id,
-    { $push:{ assignedTo:{ branch, semester } } },
-    { new:true }
+    // $addToSet --> no duplicates; $each lets us send an array
+    { $addToSet: { assignedTo: { $each: emails } } },
+    { new: true }
   );
+
+  if (!test) return res.status(404).json({ msg: "Test not found" });
   res.json(test);
 };
+
 
 export const deleteTest = async (req,res)=>{
   await Test.findByIdAndDelete(req.params.id);

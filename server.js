@@ -9,6 +9,7 @@ import resultRoutes from "./routes/resultRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import cheatingRoutes from "./routes/cheatingRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -26,6 +27,8 @@ app.use("/api/results", resultRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/cheating", cheatingRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/chats", chatRoutes);
+
 
 /* optional example of a protected route */
 import { protect, restrictTo } from "./middlewares/authMiddleware.js";
