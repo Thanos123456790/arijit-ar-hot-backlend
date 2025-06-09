@@ -16,20 +16,67 @@ export const getSubmissionsByTest = async (req, res) => {
     res.json(subs);
 };
 
+// export const updateSubmission = async (req, res) => {
+//     const { id } = req.params;
+//     const { questions } = req.body;
+
+//     console.log(id + "data",questions);
+//     try {
+//         const sub = await Submission.findById(id);
+//         questions.forEach(({ idx, teacherScore, teacherComment }) => {
+//             if (sub.evaluatedQuestions[idx]) {
+//                 sub.evaluatedQuestions[idx].obtained = teacherScore;
+//                 sub.evaluatedQuestions[idx].teacherComment = teacherComment;
+//             }
+//         });
+//         await sub.save();
+//         res.json({ msg: "Saved", submission: sub });
+//     } catch (err) {
+//         res.status(500).json({ msg: "Update failed", error: err.message });
+//     }
+// };
+
+// PATCH /api/submissions/:id
 export const updateSubmission = async (req, res) => {
     const { id } = req.params;
-    const { questions } = req.body;   // [{ idx, teacherScore, teacherComment }]
+    const { questions = [] } = req.body;
+    console.log(id + "data", questions);
+
     try {
         const sub = await Submission.findById(id);
-        questions.forEach(({ idx, teacherScore, teacherComment }) => {
-            if (sub.evaluatedQuestions[idx]) {
-                sub.evaluatedQuestions[idx].teacherScore = teacherScore;
-                sub.evaluatedQuestions[idx].teacherComment = teacherComment;
-            }
+        if (!sub) return res.status(404).json({ msg: "Submission not found" });
+
+        /* validate & update each question */
+        questions.forEach(({ idx, teacherScore = 0, teacherComment = "" }) => {
+            const q = sub.evaluatedQuestions[idx];
+            if (!q) return;                                   // skip bad idx
+            if (teacherScore > q.score || teacherScore < 0)
+                throw new Error(`Score out of range for question ${idx + 1}`);
+
+            q.obtained = teacherScore;
+            q.teacherComment = teacherComment;
         });
+
+        /* recalc totals */
+        sub.obtainedScore = sub.evaluatedQuestions.reduce(
+            (sum, q) => sum + (q.obtained ?? 0), 0
+        );
+        sub.percentage = ((sub.obtainedScore / sub.totalScore) * 100).toFixed(2);
+
         await sub.save();
         res.json({ msg: "Saved", submission: sub });
     } catch (err) {
-        res.status(500).json({ msg: "Update failed", error: err.message });
+        res.status(400).json({ msg: "Update failed", error: err.message });
+    }
+};
+
+export const getSubmissionsByStudent = async (req, res) => {
+    try {
+        const docs = await Submission
+            .find({ studentId: req.params.id })
+            .select("testId");
+        res.json(docs);                             // e.g. [ {testId:"abc"}, …]
+    } catch (err) {
+        res.status(500).json({ msg: "Failed", error: err.message });
     }
 };

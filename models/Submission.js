@@ -6,6 +6,7 @@ const EvaluatedQuestion = new mongoose.Schema({
   studentAnswer: String,
   score: Number,
   obtained: Number,
+  teacherComment:String,
 });
 
 const SubmissionSchema = new mongoose.Schema(

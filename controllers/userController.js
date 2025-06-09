@@ -1,7 +1,9 @@
 import { User, Student, Teacher } from "../models/User.js";
 
-// GET all non-admin users
-export const getUsers = async (req, res) => {
+/* ------------------------------------------------------------------
+  GET /api/users          – all non-admin users
+------------------------------------------------------------------ */
+export const getUsers = async (_req, res) => {
   try {
     const users = await User.find({ role: { $ne: "admin" } }).select("-password");
     res.json(users);
@@ -10,47 +12,103 @@ export const getUsers = async (req, res) => {
   }
 };
 
-// POST create a new user
+/* ------------------------------------------------------------------
+  POST /api/users         – create a student / teacher / admin
+------------------------------------------------------------------ */
 export const createUser = async (req, res) => {
-  const { name, email, password, role, branch, semester, rollNumber, employeeId, department, designation } = req.body;
+  const {
+    name, email, password, role,
+    phone, address, dateOfBirth, bio, gender, image,
+    branch, semester, rollNumber,        // student-only
+    employeeId, department, designation, // teacher-only
+  } = req.body;
+
   try {
     let newUser;
+
     if (role === "student") {
-      newUser = new Student({ name, email, password, role, branch, semester, rollNumber });
+      newUser = new Student({
+        name, email, password, role,
+        phone, address, dateOfBirth, bio, gender, image,
+        branch, semester, rollNumber,
+      });
     } else if (role === "teacher") {
-      newUser = new Teacher({ name, email, password, role, employeeId, department, designation });
+      newUser = new Teacher({
+        name, email, password, role,
+        phone, address, dateOfBirth, bio, gender, image,
+        employeeId, department, designation,
+      });
+    } else if (role === "admin") {
+      newUser = new User({
+        name, email, password, role,
+        phone, address, dateOfBirth, bio, gender, image,
+      });
     } else {
       return res.status(400).json({ msg: "Invalid role" });
     }
+
     await newUser.save();
-    const safeUser = newUser.toObject();
-    delete safeUser.password;
-    res.status(201).json(safeUser);
+    const safe = newUser.toObject();
+    delete safe.password;
+    res.status(201).json(safe);
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ msg: "E-mail already in use" });
+    }
     res.status(500).json({ msg: "Failed to create user", error: err.message });
   }
 };
 
-// DELETE user by id
+/* ------------------------------------------------------------------
+  DELETE /api/users/:id   – remove a user
+------------------------------------------------------------------ */
 export const deleteUser = async (req, res) => {
-  const { id } = req.params;
   try {
-    await User.findByIdAndDelete(id);
+    const doc = await User.findByIdAndDelete(req.params.id);
+    if (!doc) return res.status(404).json({ msg: "User not found" });
     res.json({ msg: "User deleted" });
   } catch (err) {
     res.status(500).json({ msg: "Deletion failed", error: err.message });
   }
 };
 
-// PUT update user
+/* ------------------------------------------------------------------
+  PUT /api/users/:id      – update profile / extra info
+------------------------------------------------------------------ */
 export const updateUser = async (req, res) => {
-  const { id } = req.params;
-  const updateFields = { ...req.body };
-  delete updateFields.password; // optional password change not handled
+  const allowed = [
+    "name", "phone", "address", "dateOfBirth", "bio", "gender", "image",
+    "branch", "semester", "rollNumber",
+    "department", "designation", "employeeId",
+  ];
+
+  const patch = {};
+  allowed.forEach((k) => {
+    if (req.body[k] !== undefined) patch[k] = req.body[k];
+  });
+
   try {
-    const updated = await User.findByIdAndUpdate(id, updateFields, { new: true }).select("-password");
+    const updated = await User.findByIdAndUpdate(
+      req.params.id,
+      patch,
+      { new: true, runValidators: true },
+    ).select("-password");
+
+    if (!updated) return res.status(404).json({ msg: "User not found" });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ msg: "Update failed", error: err.message });
   }
 };
+
+/* GET /api/users/:id – single user (without password) */
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+    if (!user) return res.status(404).json({ msg: "User not found" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ msg: "Fetch failed", error: err.message });
+  }
+};
+
