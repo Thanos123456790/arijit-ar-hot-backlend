@@ -16,31 +16,10 @@ export const getSubmissionsByTest = async (req, res) => {
     res.json(subs);
 };
 
-// export const updateSubmission = async (req, res) => {
-//     const { id } = req.params;
-//     const { questions } = req.body;
-
-//     console.log(id + "data",questions);
-//     try {
-//         const sub = await Submission.findById(id);
-//         questions.forEach(({ idx, teacherScore, teacherComment }) => {
-//             if (sub.evaluatedQuestions[idx]) {
-//                 sub.evaluatedQuestions[idx].obtained = teacherScore;
-//                 sub.evaluatedQuestions[idx].teacherComment = teacherComment;
-//             }
-//         });
-//         await sub.save();
-//         res.json({ msg: "Saved", submission: sub });
-//     } catch (err) {
-//         res.status(500).json({ msg: "Update failed", error: err.message });
-//     }
-// };
-
-// PATCH /api/submissions/:id
 export const updateSubmission = async (req, res) => {
     const { id } = req.params;
     const { questions = [] } = req.body;
-    console.log(id + "data", questions);
+    // console.log(id + "data", questions);
 
     try {
         const sub = await Submission.findById(id);

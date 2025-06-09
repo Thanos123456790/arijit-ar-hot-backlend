@@ -47,10 +47,10 @@ export const deleteTest = async (req,res)=>{
 
 /* GET /api/tests/:id  ─────────────── */
 export const getTestById = async (req, res) => {
-  console.log("fetching id",req.params.id);
+  // console.log("fetching id",req.params.id);
   const test = await Test.findById(req.params.id);
   if (!test) return res.status(404).json({ msg: "Test not found" });
-  console.log(test);
+  // console.log(test);
   res.json(test);
 };
 

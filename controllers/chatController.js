@@ -1,4 +1,4 @@
-import { ChatMessage } from "../models/chatMessage.js";
+import { ChatMessage } from "../models/ChatMessage.js";
 
 export const getMessages = async (req, res) => {
     const { department, semester, since } = req.query;
