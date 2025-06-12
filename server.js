@@ -10,9 +10,14 @@ import commentRoutes from "./routes/commentRoutes.js";
 import cheatingRoutes from "./routes/cheatingRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import { scheduleTestNotifications } from "./jobs/testNotifier.js";
+import aiRoutes from "./routes/aiRoutes.js";
+
+
 
 dotenv.config();
 connectDB();
+scheduleTestNotifications();
 
 const app = express();
 app.use(cors());
@@ -21,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.get("/", (_, res) => res.send("API running 🏃‍♀️"));
-
+app.use("/api/ai", aiRoutes);
 app.use("/api/auth", authRoutes);
 app.use('/api/tests', testRoutes);
 app.use("/api/submissions", submissionRoutes);
