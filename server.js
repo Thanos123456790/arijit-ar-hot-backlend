@@ -10,6 +10,7 @@ import commentRoutes from "./routes/commentRoutes.js";
 import cheatingRoutes from "./routes/cheatingRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import resetRoutes from "./routes/resetRoutes.js";
 import { scheduleTestNotifications } from "./jobs/testNotifier.js";
 import aiRoutes from "./routes/aiRoutes.js";
 
@@ -35,6 +36,8 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/cheating", cheatingRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/reset", resetRoutes);
+
 
 
 /* optional example of a protected route */
