@@ -1,18 +1,27 @@
-import nodemailer from "nodemailer";
 import moment from "moment-timezone";
 import { Submission } from "../models/Submission.js";
 import { Test } from "../models/Test.js";
 import { encrypt, decrypt } from "../utils/encryptUtils.js";
-import dotenv from "dotenv";
 import { sendTestEmail } from "../utils/emailUtils.js";
 
+// ✅ Convert UTC date to IST formatted string
+const formatToIST = (date) =>
+  moment(date).tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ss");
 
-// ✅ Helper to parse and convert separate date and time strings to IST Date object
+// ✅ Apply IST conversion to all date fields of test object
+export const convertTestDatesToIST = (test) => ({
+  ...test,
+  startDate: formatToIST(test.startDate),
+  expiryDate: formatToIST(test.expiryDate),
+  createdAt: test.createdAt ? formatToIST(test.createdAt) : undefined,
+  updatedAt: test.updatedAt ? formatToIST(test.updatedAt) : undefined,
+});
+
+// ✅ Helper to convert user input date+time to IST Date object
 const toISTDateTime = (dateStr, timeStr) =>
   moment.tz(`${dateStr} ${timeStr}`, "YYYY-MM-DD HH:mm", "Asia/Kolkata").toDate();
 
-
-// create test -------------->>>
+// ✅ Create Test
 export const createTest = async (req, res) => {
   try {
     const { startDate, startTime, expiryDate, expiryTime, questions, ...rest } = req.body;
@@ -33,21 +42,23 @@ export const createTest = async (req, res) => {
       questions: encryptedQuestions,
     });
 
-    res.status(201).json({ ...test.toObject(), questions });
+    res.status(201).json({
+      ...convertTestDatesToIST(test.toObject()),
+      questions,
+    });
   } catch (err) {
     res.status(500).json({ msg: "Error creating test", error: err.message });
   }
 };
 
-
-// ✅ GET ALL TESTS
+// ✅ Get All Tests
 export const getTests = async (req, res) => {
   try {
     const tests = await Test.find();
     const decryptedTests = tests.map((test) => {
       const t = test.toObject();
       t.questions = decrypt(t.questions);
-      return t;
+      return convertTestDatesToIST(t);
     });
     res.json(decryptedTests);
   } catch (err) {
@@ -55,14 +66,14 @@ export const getTests = async (req, res) => {
   }
 };
 
-// ✅ GET TEACHER TESTS
+// ✅ Get Teacher Tests
 export const getTeacherTests = async (req, res) => {
   try {
     const tests = await Test.find({ teacherId: req.query.teacherId });
     const decryptedTests = tests.map((test) => {
       const t = test.toObject();
       t.questions = decrypt(t.questions);
-      return t;
+      return convertTestDatesToIST(t);
     });
     res.json(decryptedTests);
   } catch (err) {
@@ -70,15 +81,15 @@ export const getTeacherTests = async (req, res) => {
   }
 };
 
-// ✅ UPDATE TEST
+// ✅ Update Test
 export const updateTest = async (req, res) => {
   try {
     const { startDate, startTime, expiryTime, expiryDate, questions, ...rest } = req.body;
     const updateData = { ...rest };
 
     if (startDate && expiryDate) {
-      const startIST = toISTDate(startDate,startTime);
-      const expiryIST = toISTDate(expiryDate,expiryTime);
+      const startIST = toISTDateTime(startDate, startTime);
+      const expiryIST = toISTDateTime(expiryDate, expiryTime);
 
       if (startIST > expiryIST) {
         return res.status(400).json({ msg: "Start date cannot be after expiry date" });
@@ -97,13 +108,13 @@ export const updateTest = async (req, res) => {
 
     const t = test.toObject();
     t.questions = decrypt(t.questions);
-    res.json(t);
+    res.json(convertTestDatesToIST(t));
   } catch (err) {
     res.status(500).json({ msg: "Error updating test", error: err.message });
   }
 };
 
-// ✅ ASsign test
+// ✅ Assign Test
 export const assignTest = async (req, res) => {
   try {
     const { emails } = req.body;
@@ -119,25 +130,25 @@ export const assignTest = async (req, res) => {
 
     if (!test) return res.status(404).json({ msg: "Test not found" });
 
-    // Send email to all
     for (let email of emails) {
       await sendTestEmail({
         email,
-        test,
+        test: convertTestDatesToIST(test.toObject()),
         messageText: "You have been assigned a new test. Please find the details below.",
         showCalendar: true,
       });
     }
 
-    res.json({ msg: "Test assigned and emails sent successfully.", test });
+    res.json({
+      msg: "Test assigned and emails sent successfully.",
+      test: convertTestDatesToIST(test.toObject()),
+    });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ msg: "Error assigning test", error: err.message });
   }
 };
 
-
-// ✅ DELETE TEST
+// ✅ Delete Test
 export const deleteTest = async (req, res) => {
   try {
     await Test.findByIdAndDelete(req.params.id);
@@ -147,7 +158,7 @@ export const deleteTest = async (req, res) => {
   }
 };
 
-// ✅ GET TEST BY ID
+// ✅ Get Test by ID
 export const getTestById = async (req, res) => {
   try {
     const test = await Test.findById(req.params.id);
@@ -155,16 +166,18 @@ export const getTestById = async (req, res) => {
 
     const t = test.toObject();
     t.questions = decrypt(t.questions);
-    res.json(t);
+    res.json(convertTestDatesToIST(t));
   } catch (err) {
     res.status(500).json({ msg: "Error fetching test", error: err.message });
   }
 };
 
-// ✅ SUBMIT TEST
+// ✅ Submit Test
 export const submitTest = async (req, res) => {
   try {
-    const { studentId, studentName, answers } = req.body;
+    const { studentId, studentName, answers, studentRoll,studentEmail ,timeLeft } = req.body;
+    console.log("📨 Incoming submission:", req.body);
+
     const test = await Test.findById(req.params.id);
     if (!test) return res.status(404).json({ msg: "Test not found" });
 
@@ -201,6 +214,9 @@ export const submitTest = async (req, res) => {
       testId: test._id,
       studentId,
       studentName,
+      studentRoll,
+      studentEmail,
+      timeLeft,
       obtainedScore,
       totalScore: test.totalScore,
       percentage,

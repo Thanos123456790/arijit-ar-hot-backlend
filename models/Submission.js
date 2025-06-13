@@ -15,13 +15,18 @@ const SubmissionSchema = new mongoose.Schema(
     studentId:   String,
     studentName: String,
     studentRoll: String,
+    studentEmail:String,
     obtainedScore: Number,
     totalScore:   Number,
     percentage:   Number,
     evaluatedQuestions: [EvaluatedQuestion],
     submittedAt: { type: Date, default: Date.now },
+    status:{type: String, enum: ["waiting", "pass", "fail"]},
+    timeLeft:Number,
   },
-  { timestamps: true }
+  { timestamps: true,
+    strict: true,
+  }
 );
 
 export const Submission = mongoose.model("Submission", SubmissionSchema);

@@ -1,5 +1,11 @@
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import { User, Student, Teacher } from "../models/User.js";
+import Otp from "../models/OtpModels.js";
+import { generateOtp, sendOtpEmail } from "../utils/otpUtil.js";
+import bcrypt from "bcryptjs";
+
+dotenv.config();
 
 /* utility to generate JWT */
 const generateToken = (id) =>
@@ -7,67 +13,7 @@ const generateToken = (id) =>
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
-/* POST /api/auth/register */
-export const registerUser = async (req, res) => {
-  try {
-    const {
-      role,
-      name,
-      email,
-      phone,
-      password,
-      rollNumber,
-      branch,
-      semester,
-      employeeId,
-      department,
-      designation,
-    } = req.body;
 
-    /* uniqueness check */
-    if (await User.findOne({ email }))
-      return res.status(400).json({ msg: "Email already in use" });
-
-    /* choose model by role */
-    let newUser;
-    if (role === "student") {
-      newUser = await Student.create({
-        role,
-        name,
-        email,
-        phone,
-        password,
-        rollNumber,
-        branch,
-        semester,
-      });
-    } else if (role === "teacher") {
-      newUser = await Teacher.create({
-        role,
-        name,
-        email,
-        phone,
-        password,
-        employeeId,
-        department,
-        designation,
-      });
-    } else if (role === "admin") {
-      newUser = await User.create({ role, name, email, phone, password });
-    } else {
-      return res.status(400).json({ msg: "Invalid role" });
-    }
-
-    return res.status(201).json({
-      token: generateToken(newUser._id),
-      user: { ...newUser.toObject(), password: undefined },
-    });
-  } catch (err) {
-    return res.status(500).json({ msg: err.message });
-  }
-};
-
-/* POST /api/auth/login */
 export const loginUser = async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -83,5 +29,110 @@ export const loginUser = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ msg: err.message });
+  }
+};
+
+
+// POST /api/auth/register/otp
+export const sendOtpForRegistration = async (req, res) => {
+  try {
+    const { email, name } = req.body;
+
+    const userExists = await User.findOne({ email });
+    if (userExists)
+      return res.status(400).json({ message: "Email already registered" });
+
+    const otp = generateOtp();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min expiry
+
+    await Otp.findOneAndUpdate(
+      { email },
+      { otp, expiresAt },
+      { upsert: true, new: true }
+    );
+
+    await sendOtpEmail(email, otp, name);
+
+    res.status(200).json({ message: "OTP sent to your email." });
+  } catch (err) {
+    console.log(err.message);
+    res.status(500).json({ message: "Failed to send OTP", error: err.message });
+  }
+};
+
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const {
+      role,
+      name,
+      email,
+      phone,
+      password,
+      otp,
+      rollNumber,
+      branch,
+      semester,
+      employeeId,
+      department,
+      designation,
+    } = req.body;
+
+    const rec = await Otp.findOne({ email });
+    if (!rec || rec.otp !== otp)
+      return res.status(400).json({ message: "Invalid OTP" });
+
+    if (rec.expiresAt < new Date())
+      return res.status(400).json({ message: "OTP expired" });
+
+    if (await User.findOne({ email }))
+      return res.status(400).json({ message: "Email already registered" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    let newUser;
+
+    if (role === "student") {
+      newUser = await Student.create({
+        name,
+        email,
+        phone,
+        password,
+        role,
+        rollNumber,
+        branch,
+        semester,
+      });
+    } else if (role === "teacher") {
+      newUser = await Teacher.create({
+        name,
+        email,
+        phone,
+        password,
+        role,
+        employeeId,
+        department,
+        designation,
+      });
+    } else if (role === "admin") {
+      newUser = await User.create({
+        name,
+        email,
+        phone,
+        password,
+        role,
+      });
+    } else {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+
+    await Otp.deleteOne({ email });
+
+    res.status(201).json({
+      message: "Registration successful!",
+      user: { ...newUser.toObject(), password: undefined },
+    });
+  } catch (err) {
+    console.log(err.message);
+    res.status(500).json({ message: "OTP verification failed", error: err.message });
   }
 };

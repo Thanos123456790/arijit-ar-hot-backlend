@@ -1,5 +1,7 @@
 import { Submission } from "../models/Submission.js";
 
+
+
 export const getStudentSubmission = async (req, res) => {
     const { testId, studentId } = req.query;
     if (!testId || !studentId)
@@ -53,8 +55,9 @@ export const getSubmissionsByStudent = async (req, res) => {
     try {
         const docs = await Submission
             .find({ studentId: req.params.id })
-            .select("testId");
-        res.json(docs);                             // e.g. [ {testId:"abc"}, …]
+            .select("testId status");
+        res.json(docs);
+        // console.log(docs);                         
     } catch (err) {
         res.status(500).json({ msg: "Failed", error: err.message });
     }
