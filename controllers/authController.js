@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import { User, Student, Teacher } from "../models/User.js";
 import Otp from "../models/OtpModels.js";
 import { generateOtp, sendOtpEmail } from "../utils/otpUtil.js";
-import bcrypt from "bcryptjs";
 
 dotenv.config();
 
@@ -62,6 +61,7 @@ export const sendOtpForRegistration = async (req, res) => {
 
 
 export const verifyOtp = async (req, res) => {
+  console.log(req.body);
   try {
     const {
       role,
@@ -79,15 +79,18 @@ export const verifyOtp = async (req, res) => {
     } = req.body;
 
     const rec = await Otp.findOne({ email });
-    if (!rec || rec.otp !== otp)
+    console.log("rec",rec);
+    if (!rec || rec.otp !== otp){
+      console.log("otp not found");
       return res.status(400).json({ message: "Invalid OTP" });
+    }
 
     if (rec.expiresAt < new Date())
       return res.status(400).json({ message: "OTP expired" });
 
     if (await User.findOne({ email }))
       return res.status(400).json({ message: "Email already registered" });
-
+    let newUser;
     if (role === "student") {
       newUser = await Student.create({
         name,
